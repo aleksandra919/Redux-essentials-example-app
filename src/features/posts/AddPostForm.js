@@ -1,13 +1,20 @@
 import React, { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+/* 
+    Redux Toolkit has a utility function called unwrapResult 
+    that will return either the actual action.payload value from a fulfilled action,
+    or throw an error if it's the rejected action.
+ */
+import { unwrapResult } from '@reduxjs/toolkit'
 
-import { addPost } from './postsSlice'
+import { addNewPost } from './postsSlice'
 
 export const AddPostForm = () => {
     const dispatch = useDispatch()
     const [title, setTitle] = useState('')
     const [content, setContent] = useState('')
     const [userId, setUserId] = useState('')
+    const [addRequestStatus, setAddRequestStatus] = useState('idle')
 
     const users = useSelector((state) => state.users)
 
@@ -15,16 +22,35 @@ export const AddPostForm = () => {
     const onContentChanged = (e) => setContent(e.target.value)
     const onAuthorChanged = (e) => setUserId(e.target.value)
 
-    const onSavePostClicked = () => {
-        if (title && content) {
-            dispatch(addPost(title, content, userId))
-
-            setTitle('')
-            setContent('')
+    const onSavePostClicked = async () => {
+        if (canSave) {
+            try {
+                setAddRequestStatus('pending')
+                const resultAction = await dispatch(
+                    addNewPost({
+                        title,
+                        content,
+                        userId,
+                    })
+                )
+                unwrapResult(resultAction)
+                setTitle('')
+                setContent('')
+                setUserId('')
+            } catch (error) {
+                console.error('Failed to save the post: ', error)
+            } finally {
+                setAddRequestStatus('idle')
+            }
         }
     }
 
-    const canSave = Boolean(title) && Boolean(content) && Boolean(userId)
+    const canSave =
+        // [title, content, userId].every(Boolean)
+        Boolean(title) &&
+        Boolean(content) &&
+        Boolean(userId) &&
+        addRequestStatus === 'idle'
 
     const usersOptions = users.map((user) => (
         <option key={user.id} value={user.id}>
